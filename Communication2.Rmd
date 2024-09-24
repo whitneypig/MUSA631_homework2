@@ -1,0 +1,256 @@
+---
+title: "Why you have sleep disorders"
+author: "Whitney Zhu"
+date: "2024-09-24"
+output:   
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+## Intro
+
+Sleep disorders are a growing public health concern, impacting millions globally. Beyond lifestyle factors like screen time and physical activity, research is increasingly focusing on how occupation, gender, and other variables contribute to sleep quality. These factors can influence not only physical well-being but also mental health, leading to issues such as chronic fatigue and increased cardiovascular risks. This project delves into the complex relationships between sleep patterns and diverse influences, including work-related stress, gender disparities, and lifestyle choices, offering comprehensive insights into the causes and potential mitigations of sleep disorders.
+
+
+
+
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+knitr::opts_chunk$set(echo = TRUE)
+install.packages(c("dplyr", "ggplot2", "readr", "ggcorrplot", "corrplot", "RColorBrewer"))
+
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(ggcorrplot)
+library(corrplot)
+library(RColorBrewer)
+```
+
+## Load the Sleep Health and Lifestyle Dataset
+```{r}
+sleep_data <- read_csv("~/Downloads/Sleep_health_and_lifestyle_dataset.csv")
+
+head(sleep_data)
+```
+
+*Data Features*
+
+Person ID: An identifier for each individual.
+
+Gender: The gender of the person (Male/Female).
+
+Age: The age of the person in years.
+
+Occupation: The occupation or profession of the person.
+
+Sleep Duration (hours): The number of hours the person sleeps per day.
+
+Quality of Sleep (scale: 1-10): A subjective rating of the quality of sleep, ranging from 1 to 10.
+
+Physical Activity Level (minutes/day): The number of minutes the person engages in physical activity daily.
+
+Stress Level (scale: 1-10): A subjective rating of the stress level experienced by the person, ranging from 1 to 10.
+
+BMI Category: The BMI category of the person (e.g., Underweight, Normal, Overweight).
+
+Blood Pressure (systolic/diastolic): The blood pressure measurement of the person, indicated as systolic pressure over diastolic pressure.
+
+Heart Rate (bpm): The resting heart rate of the person in beats per minute.
+
+Daily Steps: The number of steps the person takes per day.
+
+Sleep Disorder: The presence or absence of a sleep disorder in the person (None, Insomnia, Sleep Apnea).
+
+
+## Clear the Dataset
+
+```{r}
+summary(sleep_data)
+
+sleep_data <- sleep_data %>%
+  filter(complete.cases(.))
+
+colnames(sleep_data)
+```
+```{r}
+sleep_data <- sleep_data %>%
+  rename(
+    Person_ID = `Person ID`,
+    Sleep_Duration = `Sleep Duration`,
+    Quality_of_Sleep = `Quality of Sleep`,
+    Physical_Activity_Level = `Physical Activity Level`,
+    Stress_Level = `Stress Level`,
+    BMI_Category = `BMI Category`,
+    Blood_Pressure = `Blood Pressure`,
+    Heart_Rate = `Heart Rate`,
+    Daily_Steps = `Daily Steps`,
+    Sleep_Disorder = `Sleep Disorder`
+  )
+```
+
+
+## Data Visualization
+
+### Distribution of persons have sleep disorder or not
+```{r}
+ggplot(sleep_data, aes(x = Sleep_Disorder, fill = Sleep_Disorder)) +
+  geom_bar(stat = "count", position = "dodge") +
+  scale_fill_manual(values = c("#ef7c8e", "#b6e2d3", "#d8a7b1")) + 
+  labs(title = "Distribution of persons have sleep disorder or not",
+       x = "Sleep Disorder", y = "Count") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold"),  
+    axis.text.x = element_text(angle = 0, hjust = 0.5),  
+    plot.background = element_blank(),                   
+    panel.background = element_blank(),                   
+    legend.position = "right",                            
+    legend.background = element_blank(),                  
+    legend.key = element_blank()
+  )
+```
+
+There is a significant difference in sleep disorder prevalence. A majority of the population reports no sleep disorders, while a considerable portion suffers from either insomnia or sleep apnea. These findings underscore the need for targeted interventions, particularly for individuals with diagnosed sleep disorders, as they represent a sizable group affected by sleep-related health issues.
+
+
+
+### The effects of gender on Sleep
+
+```{r}
+gender_counts <- sleep_data %>%
+  group_by(Sleep_Disorder, Gender) %>%
+  summarise(count = n()) %>%
+  arrange(Sleep_Disorder, desc(count))
+
+print(gender_counts)
+```
+```{r}
+ggplot(gender_counts, aes(x = Sleep_Disorder, y = count, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +  
+  scale_fill_manual(values = c("#ef7c8e", "#b6e2d3")) +  
+  labs(title = "Gender Distribution by Sleep Disorder", 
+       x = "Sleep Disorder", 
+       y = "Count",
+       fill = "Gender") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold"),  
+    axis.text.x = element_text(angle = 0, hjust = 0.5),  
+    plot.background = element_blank(),                   
+    panel.background = element_blank(),                   
+    legend.position = "right",                            
+    legend.background = element_blank(),                  
+    legend.key = element_blank()
+  )
+```
+
+The bar chart illustrates the distribution of sleep disorders by gender. In the "None" category, males outnumber females significantly, indicating that more men report having no sleep disorders. For insomnia, there are slightly more males than females, but the difference is relatively small. However, in the case of sleep apnea, females are overwhelmingly more affected than males, as shown by the stark contrast in the bar heights. This suggests that sleep apnea is more prevalent among females in this dataset. Overall, the chart highlights distinct gender differences in the prevalence of specific sleep disorders.
+
+
+### The effects of Age on Sleep
+```{r}
+age_sleep_summary <- sleep_data %>%
+  group_by(Sleep_Disorder) %>%
+  summarise(
+    mean_age = mean(Age, na.rm = TRUE),
+    median_age = median(Age, na.rm = TRUE),
+    count = n()
+  )
+
+print(age_sleep_summary)
+```
+
+```{r}
+ggplot(sleep_data, aes(x = Sleep_Disorder, y = Age, fill = Sleep_Disorder)) +
+  geom_violin(alpha = 0.7) +
+  scale_fill_manual(values = c("#ef7c8e", "#b6e2d3", "#d8a7b1")) +  
+  labs(title = "Age Distribution by Sleep Disorder", 
+       x = "Sleep Disorder", 
+       y = "Age") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5), 
+    axis.title = element_text(size = 14, face = "bold"),  
+    axis.text = element_text(size = 12), 
+    panel.grid.major = element_line(color = "#f0f0f0"),  
+    panel.grid.minor = element_blank()  
+  )
+```
+
+There are notable differences in age distribution across various sleep disorders. Individuals suffering from insomnia exhibit a broader age range, while those diagnosed with sleep apnea tend to be older, with most cases appearing in people over 50. In contrast, people without sleep disorders are generally younger, concentrated around the age of 40. 
+
+
+
+### The effects of Job on Sleep
+```{r}
+occupation_counts <- sleep_data %>%
+  group_by(Sleep_Disorder, Occupation) %>%
+  summarise(count = n()) %>%
+  arrange(Sleep_Disorder, desc(count))
+
+print(occupation_counts)
+```
+```{r}
+ggplot(sleep_data, aes(x = Occupation, fill = Sleep_Disorder)) +
+  geom_bar(position = "stack") + 
+  scale_fill_manual(values = c("#ef7c8e", "#b6e2d3", "#d8a7b1")) + 
+  labs(title = "The effect of job on sleep", 
+       x = "Occupation", 
+       y = "Count",
+       fill = "Sleep Disorder") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold"), 
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+The chart indicates a significant correlation between occupation and sleep disorders. Most doctors and engineers appear to be unaffected by sleep disorders, as indicated by the large proportion of individuals classified as "None." However, nurses and sales representatives show a higher prevalence of sleep apnea, especially among nurses. Insomnia is more common among salespersons and teachers, suggesting that these professions may be associated with higher stress levels, potentially affecting sleep quality. Overall, the chart highlights how different job types may influence the likelihood of experiencing specific sleep disorders, likely due to varying work pressures and lifestyles.
+
+
+
+
+
+
+### Relationship between Blood Pressure,Heart Rate and Sleep Disorder
+
+```{r}
+ggplot(sleep_data, aes(x = Blood_Pressure, y = Heart_Rate, color = Sleep_Disorder)) +
+  geom_point(size = 3, alpha = 0.7) +  
+  scale_color_manual(values = c("#ef7c8e", "#b6e2d3", "#d8a7b1")) +  
+  labs(title = "Relationship Between Blood Pressure and Heart Rate \nand Their Effect on Sleep Disorder",
+       x = "Blood Pressure",
+       y = "Heart Rate",
+       color = "Sleep Disorder") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  
+    axis.title = element_text(size = 14, face = "bold"),  
+    axis.text = element_text(size = 10),  
+    axis.text.x = element_text(angle = 45, hjust = 1),  
+    panel.grid.major = element_line(color = "#f0f0f0"), 
+    panel.grid.minor = element_blank()  
+  )
+```
+
+Individuals with normal sleep patterns tend to have lower blood pressure and heart rates, whereas those with sleep apnea often show higher levels in both. This suggests a strong link between sleep apnea and increased cardiovascular strain. On the other hand, insomnia affects individuals with a wider range of blood pressure and heart rates, indicating a less direct connection between these factors and the disorder. Overall, the results emphasize the importance of monitoring cardiovascular health in people with sleep apnea, as their elevated levels could pose additional health risks.
+
+
+## Reflection
+
+*Aims:*
+I wanted to explore the relationship between sleep disorders and factors like occupation, lifestyle, and health, and represent the findings using beautiful, clear visualizations.
+
+*What went well: *
+I managed to create some nice visualizations that show trends, like how different types of sleep disorders are distributed across various groups. 
+
+*What didn’t go well:* 
+The biggest issue was realizing, midway through the analysis, that the data set isn’t strong enough to fully support the deeper relationships I hoped to explore. I also struggled to find external data to back up my findings, which made me question whether I should continue with the same data or switch to a more comprehensive source.
+
+*Next steps: *
+In the future, I plan to explore the relationship between sleep disorders and more factors, and experiment with different ways of visualizing these relationships. I also want to improve the way I present the findings, making the story behind the data more vivid and relatable instead of just explaining the charts.
